@@ -79,10 +79,10 @@ export function PromptInputEnhanced({
 
       <PromptInputTextarea
         placeholder="Describe your data analysis task..."
-        className="dark:bg-transparent"
+        className="dark:bg-transparent text-base"
       />
 
-      <PromptInputActions className="flex items-center justify-between gap-2 px-2 pb-1">
+      <PromptInputActions className="flex items-center justify-between gap-2 px-2 pb-1 pt-4">
         {/* Left: attach + theme */}
         <div className="flex items-center gap-1">
           <PromptInputAction tooltip="Attach files">
