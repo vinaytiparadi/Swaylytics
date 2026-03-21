@@ -555,6 +555,25 @@ export function ThreePanelInterface() {
     }
   }, []);
 
+  // Read URL params from tiramisu redirect
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const prompt = params.get("prompt");
+    const preset = params.get("preset");
+    if (prompt) setInputValue(prompt);
+    if (
+      preset &&
+      DATA_ANALYSIS_PROMPT_PRESETS.some((item) => item.id === preset)
+    ) {
+      setSelectedPresetId(preset);
+    }
+    // Clean URL params after reading
+    if (prompt || preset) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   // 按 session 维度持久化/恢复 折叠状态 与 手动锁
   useEffect(() => {
     if (!sessionId) return;

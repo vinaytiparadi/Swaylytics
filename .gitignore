@@ -30,3 +30,6 @@ wheels/
 *.env.development
 *.env.production
 *.env.test
+**/.agent/
+**/.agents/
+**/skills-lock.json
