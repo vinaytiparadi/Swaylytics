@@ -118,6 +118,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -126,19 +127,215 @@
     scrollbar-width: thin;
     scrollbar-color: var(--border) var(--background);
   }
+
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
+
   *::-webkit-scrollbar-track {
     background: var(--background);
   }
+
   *::-webkit-scrollbar-thumb {
     background-color: var(--border);
     border-radius: 9999px;
     border: 2px solid var(--background);
   }
+
   *::-webkit-scrollbar-thumb:hover {
     background-color: var(--muted-foreground);
   }
+}
+
+/* ─── Analyze page: Research Log ───────────────────────────── */
+
+/* Timeline spine layout */
+.sections-timeline {
+  position: relative;
+  padding-left: 28px;
+}
+
+/* Section row with indicator */
+.section-row {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+/* The indicator column: dot, label, connector lines between sections */
+.section-indicator {
+  position: absolute;
+  left: -28px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2.5px var(--background);
+  position: relative;
+  z-index: 2;
+  margin-top: 4px;
+}
+
+/* Line segment between dot and label, and after label to next section */
+.indicator-line-segment {
+  width: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.indicator-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  white-space: nowrap;
+  opacity: 0.90;
+  user-select: none;
+  padding: 3px 0;
+}
+
+.dark .indicator-label {
+  opacity: 0.45;
+}
+
+/* Thinking section — readable in both themes */
+.thinking-section {
+  color: var(--foreground);
+  opacity: 0.85;
+  font-style: italic;
+}
+
+.dark .thinking-section {
+  opacity: 0.7;
+}
+
+/* Terminal card (code blocks) */
+.terminal-card {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* Answer block — warm wash, no left bar */
+.answer-block {
+  position: relative;
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+/* Answer prose: inherit font-sans, render markdown inline */
+.answer-prose {
+  font-family: var(--font-sans);
+}
+
+.answer-prose h1,
+.answer-prose h2,
+.answer-prose h3,
+.answer-prose h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+}
+
+.answer-prose h1 {
+  font-size: 1.25em;
+}
+
+.answer-prose h2 {
+  font-size: 1.1em;
+}
+
+.answer-prose h3 {
+  font-size: 1em;
+}
+
+.answer-prose p {
+  margin-bottom: 0.6em;
+}
+
+.answer-prose ul,
+.answer-prose ol {
+  padding-left: 1.25em;
+  margin-bottom: 0.6em;
+}
+
+.answer-prose li {
+  margin-bottom: 0.2em;
+}
+
+.answer-prose strong {
+  font-weight: 600;
+}
+
+.answer-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--secondary);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+}
+
+.answer-prose a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+/* Streaming cursor */
+@keyframes cursor-blink {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+.streaming-cursor::after {
+  content: '▎';
+  display: inline-block;
+  animation: cursor-blink 0.8s steps(1) infinite;
+  color: var(--primary);
+  margin-left: 1px;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% center;
+  }
+
+  to {
+    background-position: -200% center;
+  }
+
+}
+
+/* Horizontal scroll strip */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
 }

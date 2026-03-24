@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { DitheringBackground } from "@/components/ui/dithering-background";
 import { TextScramble } from "@/components/ui/text-scrammble";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PromptInputEnhanced } from "@/components/prompt-input-enhanced";
 import { PresetSelector } from "@/components/preset-selector";
-import { CUPCAKE_URL } from "@/lib/config";
+import { storeTransfer } from "@/lib/transfer-store";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function Home() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [reportTheme, setReportTheme] = useState("modern");
@@ -23,12 +25,14 @@ export default function Home() {
   };
 
   const handleAnalyze = () => {
-    if (!input.trim() && files.length === 0) return;
-    const params = new URLSearchParams();
-    if (input.trim()) params.set("prompt", input.trim());
-    params.set("reportTheme", reportTheme);
-    if (selectedPresetId) params.set("preset", selectedPresetId);
-    window.location.href = `${CUPCAKE_URL}?${params.toString()}`;
+    if (!input.trim() || files.length === 0) return;
+    const tid = storeTransfer({
+      prompt: input.trim(),
+      files,
+      reportTheme,
+      presetId: selectedPresetId,
+    });
+    router.push(`/analyze?tid=${tid}`);
   };
 
   return (
