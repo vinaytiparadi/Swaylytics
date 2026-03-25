@@ -10,11 +10,11 @@
 
 :root {
   --background: #FAF8F5;
-  --foreground: #1C1814;
+  --foreground: #1a1a1a;
   --card: #FFFFFF;
-  --card-foreground: #1C1814;
+  --card-foreground: #1a1a1a;
   --popover: #FFFFFF;
-  --popover-foreground: #1C1814;
+  --popover-foreground: #1a1a1a;
   --primary: #BE4A2F;
   --primary-foreground: #FFFFFF;
   --secondary: #F3EDE6;
@@ -35,7 +35,7 @@
 
   /* Sidebar (shadcn compat) */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #1C1814;
+  --sidebar-foreground: #1a1a1a;
   --sidebar-primary: #BE4A2F;
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: #FDF2E9;
