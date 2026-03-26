@@ -13,6 +13,7 @@ export interface TransferData {
   files: File[];
   reportTheme: string;
   presetId: string | null;
+  planningEnabled: boolean;
 }
 
 const pending = new Map<string, TransferData>();
@@ -53,6 +54,7 @@ export function storeTransfer(data: TransferData): string {
         prompt: data.prompt,
         reportTheme: data.reportTheme,
         presetId: data.presetId,
+        planningEnabled: data.planningEnabled,
       })
     );
   } catch {
@@ -104,6 +106,7 @@ export function consumeTransfer(id: string): TransferData | undefined {
         files: [],
         reportTheme: parsed.reportTheme,
         presetId: parsed.presetId ?? null,
+        planningEnabled: parsed.planningEnabled ?? true,
       };
     }
   } catch {

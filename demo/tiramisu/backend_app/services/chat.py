@@ -184,17 +184,30 @@ def _resolve_workspace_selection(
     return resolved_paths
 
 
-def _build_user_prompt(messages: list[dict[str, Any]], workspace: list[str], workspace_dir: str) -> None:
+def _build_user_prompt(
+    messages: list[dict[str, Any]],
+    workspace: list[str],
+    workspace_dir: str,
+    plan: str | None = None,
+) -> None:
     if not messages or messages[-1].get("role") != "user":
         return
 
     user_message = str(messages[-1].get("content") or "")
     selected_paths = _resolve_workspace_selection(workspace, workspace_dir)
     file_info = collect_file_info(selected_paths if selected_paths else workspace_dir)
+
+    parts = [f"# Instruction\n{user_message}"]
+    if plan:
+        parts.append(
+            f"# Analysis Plan\n{plan}\n\n"
+            "Follow this plan. Execute each step, show results, "
+            "and adapt if you discover something unexpected."
+        )
     if file_info:
-        messages[-1]["content"] = f"# Instruction\n{user_message}\n\n# Data\n{file_info}"
-    else:
-        messages[-1]["content"] = f"# Instruction\n{user_message}"
+        parts.append(f"# Data\n{file_info}")
+
+    messages[-1]["content"] = "\n\n".join(parts)
 
 
 def _extract_code_to_execute(content: str) -> str | None:
@@ -212,6 +225,7 @@ def bot_stream(
     workspace: list[str],
     session_id: str = "default",
     runtime_config: ChatRuntimeConfig | None = None,
+    plan: str | None = None,
 ):
     runtime_config = runtime_config or ChatRuntimeConfig()
     stop_event = _get_or_create_stop_event(session_id)
@@ -225,7 +239,7 @@ def bot_stream(
     if conversation and conversation[0].get("role") == "assistant":
         conversation = conversation[1:]
 
-    _build_user_prompt(conversation, workspace_paths, workspace_dir)
+    _build_user_prompt(conversation, workspace_paths, workspace_dir, plan=plan)
 
     initial_workspace = {
         path.resolve() for path in _resolve_workspace_selection(workspace_paths, workspace_dir)

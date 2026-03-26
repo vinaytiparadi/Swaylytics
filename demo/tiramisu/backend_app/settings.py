@@ -62,10 +62,16 @@ class Settings:
     backend_host: str = os.getenv("DEEPANALYZE_BACKEND_HOST", "0.0.0.0")
     backend_port: int = int(os.getenv("DEEPANALYZE_BACKEND_PORT", "8200"))
     execution_timeout_sec: int = int(os.getenv("DEEPANALYZE_EXECUTION_TIMEOUT_SEC", "120"))
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 
     @property
     def file_server_base(self) -> str:
         return f"http://{self.http_server_host}:{self.http_server_port}"
+
+    @property
+    def planning_enabled(self) -> bool:
+        return bool(self.gemini_api_key.strip())
 
 
 settings = Settings()

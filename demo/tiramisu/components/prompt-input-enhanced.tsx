@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/prompt-input";
 import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-selector";
-import { ArrowUp, Paperclip, Mic, Square, X } from "lucide-react";
+import { ArrowUp, Paperclip, Mic, Square, X, Sparkles } from "lucide-react";
 import { useRef } from "react";
 
 interface PromptInputEnhancedProps {
@@ -18,6 +18,8 @@ interface PromptInputEnhancedProps {
   onFilesChange: (files: File[]) => void;
   reportTheme: string;
   onReportThemeChange: (theme: string) => void;
+  planningEnabled: boolean;
+  onPlanningEnabledChange: (enabled: boolean) => void;
   isLoading: boolean;
   onSubmit: () => void;
 }
@@ -29,6 +31,8 @@ export function PromptInputEnhanced({
   onFilesChange,
   reportTheme,
   onReportThemeChange,
+  planningEnabled,
+  onPlanningEnabledChange,
   isLoading,
   onSubmit,
 }: PromptInputEnhancedProps) {
@@ -117,6 +121,22 @@ export function PromptInputEnhanced({
             value={reportTheme}
             onValueChange={onReportThemeChange}
           />
+
+          <div className="w-px h-6 bg-border/40 hidden sm:block" />
+
+          <PromptInputAction tooltip={planningEnabled ? "AI Planning: ON — Gemini will plan before analysis" : "AI Planning: OFF — Direct analysis"}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onPlanningEnabledChange(!planningEnabled); }}
+              className={`flex items-center gap-2 px-3 h-9 border transition-all font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.15em] font-bold ${
+                planningEnabled
+                  ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                  : "border-border/20 bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
+              }`}
+            >
+              <Sparkles className="size-3.5" />
+              <span className="hidden sm:inline">Plan</span>
+            </button>
+          </PromptInputAction>
         </div>
 
         {/* Right: Execute */}

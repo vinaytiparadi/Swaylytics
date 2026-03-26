@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { DitheringBackground } from "@/components/ui/dithering-background";
@@ -18,6 +18,17 @@ export default function Home() {
   const [files, setFiles] = useState<File[]>([]);
   const [reportTheme, setReportTheme] = useState("modern");
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [planningEnabled, setPlanningEnabled] = useState(true);
+
+  // Hydrate from localStorage after mount (avoids SSR mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem("planningEnabled");
+    if (stored === "false") setPlanningEnabled(false);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("planningEnabled", String(planningEnabled));
+  }, [planningEnabled]);
 
   const handlePresetSelect = (presetId: string, promptText: string) => {
     setSelectedPresetId(presetId);
@@ -31,6 +42,7 @@ export default function Home() {
       files,
       reportTheme,
       presetId: selectedPresetId,
+      planningEnabled,
     });
     router.push(`/analyze?tid=${tid}`);
   };
@@ -107,6 +119,8 @@ export default function Home() {
                onFilesChange={setFiles}
                reportTheme={reportTheme}
                onReportThemeChange={setReportTheme}
+               planningEnabled={planningEnabled}
+               onPlanningEnabledChange={setPlanningEnabled}
                isLoading={false}
                onSubmit={handleAnalyze}
              />

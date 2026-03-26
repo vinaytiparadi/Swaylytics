@@ -13,11 +13,33 @@ export async function uploadFiles(
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
 }
 
+export interface PlanResult {
+  plan: string | null;
+  data_profile?: Record<string, unknown>;
+  error?: string;
+  reason?: string;
+}
+
+export async function planAnalysis(
+  sessionId: string,
+  prompt: string,
+  workspace: string[]
+): Promise<PlanResult> {
+  const res = await fetch(`${BACKEND_URL}/chat/plan`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, prompt, workspace }),
+  });
+  if (!res.ok) return { plan: null, error: `Plan request failed: ${res.status}` };
+  return res.json();
+}
+
 export function startChatStream(
   sessionId: string,
   messages: { role: string; content: string }[],
   workspace: string[],
-  signal: AbortSignal
+  signal: AbortSignal,
+  plan?: string | null
 ): Promise<Response> {
   return fetch(`${BACKEND_URL}/chat/completions`, {
     method: "POST",
@@ -31,6 +53,7 @@ export function startChatStream(
       workspace,
       stream: true,
       session_id: sessionId,
+      ...(plan ? { plan } : {}),
     }),
   });
 }

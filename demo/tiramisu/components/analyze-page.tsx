@@ -39,6 +39,7 @@ import {
   clearWorkspace,
   fetchWorkspaceFiles,
   getDownloadUrl,
+  planAnalysis,
   type WorkspaceFile,
 } from "@/lib/api";
 import { setActiveSession, clearTransfer } from "@/lib/transfer-store";
@@ -53,7 +54,7 @@ import { DitheringBackground } from "@/components/ui/dithering-background";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
-type Phase = "uploading" | "streaming" | "complete" | "error";
+type Phase = "uploading" | "planning" | "streaming" | "complete" | "error";
 
 export interface SessionSnapshot {
   prompt: string;
@@ -64,6 +65,8 @@ export interface SessionSnapshot {
   completedTurns: CompletedTurn[];
   messages: Array<{ role: string; content: string }>;
   workspaceFileNames: string[];
+  plan?: string | null;
+  planningEnabled?: boolean;
 }
 
 interface AnalyzePageProps {
@@ -71,6 +74,7 @@ interface AnalyzePageProps {
   files: File[];
   reportTheme: string;
   presetId: string | null;
+  planningEnabled: boolean;
   sessionId: string;
   recoverySnapshot?: SessionSnapshot | null;
 }
@@ -123,6 +127,7 @@ export function AnalyzePage({
   files,
   reportTheme,
   presetId,
+  planningEnabled,
   sessionId,
   recoverySnapshot,
 }: AnalyzePageProps) {
@@ -137,6 +142,7 @@ export function AnalyzePage({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const [plan, setPlan] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [followUpInput, setFollowUpInput] = useState("");
   const [followUpFiles, setFollowUpFiles] = useState<File[]>([]);
@@ -175,11 +181,11 @@ export function AnalyzePage({
     try {
       const snap: SessionSnapshot = {
         prompt, reportTheme, presetId, phase,
-        accumulatedContent, completedTurns, messages, workspaceFileNames,
+        accumulatedContent, completedTurns, messages, workspaceFileNames, plan,
       };
       sessionStorage.setItem(`snapshot:${sessionId}`, JSON.stringify(snap));
     } catch { /* quota — non-critical */ }
-  }, [phase, sessionId, prompt, reportTheme, presetId, accumulatedContent, completedTurns, messages, workspaceFileNames]);
+  }, [phase, sessionId, prompt, reportTheme, presetId, accumulatedContent, completedTurns, messages, workspaceFileNames, plan]);
 
   // ── Scroll tracking ───────────────────────────────────────────────
   const handleScroll = useCallback(() => {
@@ -226,12 +232,12 @@ export function AnalyzePage({
 
   // ── Stream ────────────────────────────────────────────────────────
   const startStream = useCallback(
-    async (chatMessages: ChatMessage[], wsFiles: string[]) => {
+    async (chatMessages: ChatMessage[], wsFiles: string[], planText?: string | null) => {
       setPhase("streaming");
       const controller = new AbortController();
       abortControllerRef.current = controller;
       try {
-        const response = await startChatStream(sessionId, chatMessages, wsFiles, controller.signal);
+        const response = await startChatStream(sessionId, chatMessages, wsFiles, controller.signal, planText);
         if (!response.ok) throw new Error(`Server error: ${response.status}`);
         const reader = response.body?.getReader();
         if (!reader) throw new Error("No response body");
@@ -283,6 +289,7 @@ export function AnalyzePage({
       setMessages(recoverySnapshot.messages as ChatMessage[]);
       setCompletedTurns(recoverySnapshot.completedTurns);
       setWorkspaceFileNames(recoverySnapshot.workspaceFileNames);
+      setPlan(recoverySnapshot.plan ?? null);
       setUploadProgress(100);
       // Re-fetch artifacts from backend (workspace is still intact)
       fetchWorkspaceFiles(sessionId).then((ws) => {
@@ -314,9 +321,22 @@ export function AnalyzePage({
         }
         setWorkspaceFileNames(fNames);
         setActiveSession(sessionId);
+
+        // Planning phase: profile data + Gemini plan (only if enabled)
+        let planText: string | null = null;
+        if (planningEnabled) {
+          setPhase("planning");
+          try {
+            const planResult = await planAnalysis(sessionId, prompt, fNames);
+            if (planResult.plan) planText = planResult.plan;
+          } catch { /* planning failed — continue without plan */ }
+          if (cancelled) return;
+        }
+        setPlan(planText);
+
         const initialMsg: ChatMessage = { role: "user", content: prompt };
         setMessages([initialMsg]);
-        await startStream([initialMsg], fNames);
+        await startStream([initialMsg], fNames, planText);
       } catch (err: unknown) {
         if (!cancelled) { setErrorMessage(err instanceof Error ? err.message : "Upload failed"); setPhase("error"); }
       }
@@ -680,10 +700,12 @@ export function AnalyzePage({
         <div className="pointer-events-auto flex items-start gap-4 sm:gap-6">
            <div className="hidden sm:flex flex-col items-end gap-1.5 mt-1">
              <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-[0.2em]">System State</span>
-             {phase === "streaming" ? (
+             {phase === "streaming" || phase === "planning" ? (
                <div className="flex items-center gap-2">
                  <div className="w-1.5 h-1.5 bg-primary rounded-none animate-ping" />
-                 <span className="font-mono text-[9px] text-primary uppercase tracking-[0.2em] font-bold">Synthesizing</span>
+                 <span className="font-mono text-[9px] text-primary uppercase tracking-[0.2em] font-bold">
+                   {phase === "planning" ? "Planning" : "Synthesizing"}
+                 </span>
                </div>
              ) : (
                <div className="flex items-center gap-2">
@@ -712,6 +734,38 @@ export function AnalyzePage({
               <div className="w-36 h-px rounded-full bg-muted overflow-hidden">
                 <motion.div className="h-full bg-primary rounded-full" initial={{ width: "0%" }} animate={{ width: `${uploadProgress}%` }} />
               </div>
+            </motion.div>
+          )}
+
+          {phase === "planning" && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-3 py-10">
+              <Loader2 className="size-5 text-primary animate-spin" />
+              <TextShimmer className="text-[16px] font-display">Planning analysis...</TextShimmer>
+              <p className="text-xs text-muted-foreground max-w-sm text-center">
+                Profiling your data and building an analysis strategy
+              </p>
+            </motion.div>
+          )}
+
+          {plan && (phase === "streaming" || phase === "complete") && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+              <details className="group border border-primary/10 bg-primary/[0.02] overflow-hidden">
+                <summary className="cursor-pointer px-4 py-2.5 flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+                  <span className="size-1.5 bg-primary/60 rotate-45" />
+                  Analysis Plan
+                  <span className="ml-auto text-[10px] opacity-50">click to expand</span>
+                </summary>
+                <div className="px-4 pb-4 pt-1 text-sm text-muted-foreground prose prose-sm dark:prose-invert max-w-none">
+                  <Markdown components={{
+                    code: ({ children }) => (
+                      <code className="bg-primary-foreground rounded-sm px-1 font-mono text-sm">{children}</code>
+                    ),
+                    pre: ({ children }) => (
+                      <pre className="bg-primary-foreground/50 rounded-md px-3 py-2 font-mono text-xs whitespace-pre-wrap overflow-x-auto">{children}</pre>
+                    ),
+                  }}>{plan}</Markdown>
+                </div>
+              </details>
             </motion.div>
           )}
 

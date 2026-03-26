@@ -9,6 +9,7 @@ transformers
 matplotlib
 plotly
 statsmodels
+textblob
 
 # Web UI
 requests

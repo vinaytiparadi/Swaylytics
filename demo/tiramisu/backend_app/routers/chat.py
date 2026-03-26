@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from ..services.chat import bot_stream, build_chat_runtime_config, request_stop
 from ..services.execution import execute_code_safe
+from ..services.planner import generate_plan
 from ..services.workspace import get_session_workspace
 from ..settings import settings
 
@@ -43,15 +44,28 @@ async def execute_code_api(request: dict):
         }
 
 
+@router.post("/chat/plan")
+async def plan_analysis(body: dict = Body(...)):
+    session_id = body.get("session_id", "default")
+    user_prompt = body.get("prompt", "")
+    workspace_files = body.get("workspace", [])
+    try:
+        result = await generate_plan(session_id, user_prompt, workspace_files)
+        return result
+    except Exception as exc:
+        return {"plan": None, "error": str(exc)}
+
+
 @router.post("/chat/completions")
 async def chat(body: dict = Body(...)):
     messages = body.get("messages", [])
     workspace = body.get("workspace", [])
     session_id = body.get("session_id", "default")
+    plan = body.get("plan")
     runtime_config = build_chat_runtime_config(body)
 
     def generate():
-        for delta_content in bot_stream(messages, workspace, session_id, runtime_config):
+        for delta_content in bot_stream(messages, workspace, session_id, runtime_config, plan=plan):
             chunk = {
                 "id": "chatcmpl-stream",
                 "object": "chat.completion.chunk",
