@@ -246,11 +246,24 @@ export function AnalyzePage({
     let cancelled = false;
     async function run() {
       try {
-        setUploadProgress(10);
-        await uploadFiles(sessionId, files);
-        if (cancelled) return;
-        setUploadProgress(100);
-        const fNames = files.map((f) => f.name);
+        let fNames: string[];
+        if (files.length > 0) {
+          // Normal flow: upload files first
+          setUploadProgress(10);
+          await uploadFiles(sessionId, files);
+          if (cancelled) return;
+          setUploadProgress(100);
+          fNames = files.map((f) => f.name);
+        } else {
+          // Recovery flow (HMR / reload): files already on backend workspace
+          setUploadProgress(100);
+          try {
+            const ws = await fetchWorkspaceFiles(sessionId);
+            fNames = ws.map((f) => f.name);
+          } catch {
+            fNames = [];
+          }
+        }
         setWorkspaceFileNames(fNames);
         const initialMsg: ChatMessage = { role: "user", content: prompt };
         setMessages([initialMsg]);
