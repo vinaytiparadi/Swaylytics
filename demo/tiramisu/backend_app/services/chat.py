@@ -226,7 +226,15 @@ def bot_stream(
     session_id: str = "default",
     runtime_config: ChatRuntimeConfig | None = None,
     plan: str | None = None,
+    router_enabled: bool = False,
 ):
+    from .planner import (
+        call_gemini_error_recovery,
+        call_gemini_checkpoint,
+        is_execution_error,
+        validate_code_before_execution,
+    )
+
     runtime_config = runtime_config or ChatRuntimeConfig()
     stop_event = _get_or_create_stop_event(session_id)
     stop_event.clear()
@@ -235,6 +243,14 @@ def bot_stream(
     workspace_dir = get_session_workspace(session_id)
     generated_dir = str(Path(workspace_dir) / "generated")
     Path(generated_dir).mkdir(parents=True, exist_ok=True)
+
+    # Hybrid router state
+    router_active = router_enabled and settings.router_active
+    successful_exec_count = 0
+    original_user_prompt = next(
+        (str(m.get("content", "")) for m in (messages or []) if m.get("role") == "user"),
+        "",
+    )
 
     if conversation and conversation[0].get("role") == "assistant":
         conversation = conversation[1:]
@@ -317,6 +333,24 @@ def bot_stream(
             if not code_str:
                 continue
 
+            # ── Pre-execution validator (only when plan+router is active) ──
+            if router_active and code_str:
+                data_ctx = plan or ""
+                patched_code, validation_warning = validate_code_before_execution(
+                    code_str, data_ctx, file_names=workspace_paths,
+                )
+                if validation_warning:
+                    warn_block = (
+                        f"\n<RouterGuidance>\n[Pre-execution Check]\n"
+                        f"{validation_warning}\n</RouterGuidance>\n"
+                    )
+                    yield warn_block
+                    conversation.append({
+                        "role": "execute",
+                        "content": f"[Validation Warning] {validation_warning}",
+                    })
+                code_str = patched_code
+
             before_state = snapshot_workspace_files(workspace_dir)
             exe_output = execute_code_safe(code_str, workspace_dir, session_id)
             if stop_event.is_set():
@@ -333,7 +367,64 @@ def bot_stream(
             file_block = build_file_block(artifact_paths, workspace_dir, session_id)
             yield exe_str + file_block
 
-            conversation.append({"role": "execute", "content": exe_output})
+            # ── Hybrid Router: Error Recovery ──
+            guidance_block = ""
+            is_error = is_execution_error(exe_output)
+            if (
+                router_active
+                and settings.router_error_recovery
+                and is_error
+                and not stop_event.is_set()
+            ):
+                guidance = call_gemini_error_recovery(
+                    user_prompt=original_user_prompt,
+                    data_context=plan or "",
+                    conversation=conversation,
+                    failed_code=code_str,
+                    error_output=exe_output,
+                )
+                if guidance:
+                    guidance_block = f"\n\n[Senior Analyst Guidance]\n{guidance}"
+                    yield f"\n<RouterGuidance>\n{guidance}\n</RouterGuidance>\n"
+
+            conversation.append({
+                "role": "execute",
+                "content": exe_output + guidance_block,
+            })
+
+            # ── Retry directive: tell the model to fix and re-run ──
+            if is_error and guidance_block:
+                retry_msg = (
+                    "The code above failed. The Senior Analyst has provided "
+                    "corrected code. You MUST re-run the corrected code for "
+                    "this step NOW before moving on to the next step. "
+                    "Do NOT skip this step or summarize — generate the fixed "
+                    "<Code> block immediately."
+                )
+                conversation.append({"role": "execute", "content": retry_msg})
+
+            # ── Hybrid Router: Periodic Checkpoint ──
+            if not is_error:
+                successful_exec_count += 1
+            if (
+                router_active
+                and settings.router_checkpoints
+                and not is_error
+                and successful_exec_count > 0
+                and successful_exec_count % settings.router_checkpoint_interval == 0
+                and not finished
+                and not stop_event.is_set()
+            ):
+                checkpoint = call_gemini_checkpoint(
+                    user_prompt=original_user_prompt,
+                    plan=plan,
+                    conversation=conversation,
+                    successful_rounds=successful_exec_count,
+                )
+                if checkpoint:
+                    checkpoint_msg = f"[Checkpoint — Senior Analyst Review]\n{checkpoint}"
+                    conversation.append({"role": "execute", "content": checkpoint_msg})
+                    yield f"\n<RouterGuidance>\n{checkpoint_msg}\n</RouterGuidance>\n"
 
             current_files = {
                 path.resolve() for path in Path(workspace_dir).rglob("*") if path.is_file()
@@ -342,5 +433,6 @@ def bot_stream(
             if new_files:
                 workspace_paths.extend(new_files)
                 initial_workspace.update(Path(path).resolve() for path in new_files)
+
     finally:
         stop_event.clear()

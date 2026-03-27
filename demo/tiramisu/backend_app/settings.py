@@ -64,6 +64,9 @@ class Settings:
     execution_timeout_sec: int = int(os.getenv("DEEPANALYZE_EXECUTION_TIMEOUT_SEC", "120"))
     gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    router_error_recovery: bool = _get_bool_env("ROUTER_ERROR_RECOVERY", True)
+    router_checkpoints: bool = _get_bool_env("ROUTER_CHECKPOINTS", True)
+    router_checkpoint_interval: int = int(os.getenv("ROUTER_CHECKPOINT_INTERVAL", "3"))
 
     @property
     def file_server_base(self) -> str:
@@ -71,6 +74,10 @@ class Settings:
 
     @property
     def planning_enabled(self) -> bool:
+        return bool(self.gemini_api_key.strip())
+
+    @property
+    def router_active(self) -> bool:
         return bool(self.gemini_api_key.strip())
 
 

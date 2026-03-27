@@ -10,6 +10,7 @@ matplotlib
 plotly
 statsmodels
 textblob
+scipy
 
 # Web UI
 requests

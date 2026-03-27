@@ -100,12 +100,17 @@ def collect_artifact_paths(
 
     for path in modified_paths:
         try:
-            dest_name = f"{path.stem}_modified{path.suffix}"
-            dest_path = uniquify_path(generated_root / dest_name)
-            shutil.copy2(path, dest_path)
-            artifact_paths.append(dest_path.resolve())
+            # Overwrite existing copy in generated/ instead of creating _modified duplicates
+            existing_copy = generated_root / path.name
+            if existing_copy.exists():
+                shutil.copy2(path, existing_copy)
+                artifact_paths.append(existing_copy.resolve())
+            else:
+                dest_path = generated_root / path.name
+                shutil.copy2(path, dest_path)
+                artifact_paths.append(dest_path.resolve())
             generated_index_updates.add(path.resolve().relative_to(workspace_root).as_posix())
-            generated_index_updates.add(dest_path.resolve().relative_to(workspace_root).as_posix())
+            generated_index_updates.add((generated_root / path.name).resolve().relative_to(workspace_root).as_posix())
         except Exception:
             continue
 

@@ -50,7 +50,7 @@ import {
   type SectionType,
 } from "@/lib/stream-parser";
 import { cn } from "@/lib/utils";
-import { DitheringBackground } from "@/components/ui/dithering-background";
+
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ export interface SessionSnapshot {
   messages: Array<{ role: string; content: string }>;
   workspaceFileNames: string[];
   plan?: string | null;
-  planningEnabled?: boolean;
+  planRouterEnabled?: boolean;
 }
 
 interface AnalyzePageProps {
@@ -75,6 +75,7 @@ interface AnalyzePageProps {
   reportTheme: string;
   presetId: string | null;
   planningEnabled: boolean;
+  routerEnabled: boolean;
   sessionId: string;
   recoverySnapshot?: SessionSnapshot | null;
 }
@@ -100,6 +101,7 @@ const SECTION_META: Record<SectionType, { label: string; color: string }> = {
   Execute: { label: "output", color: "var(--primary)" },
   Answer: { label: "answer", color: "var(--primary)" },
   File: { label: "files", color: "var(--primary)" },
+  RouterGuidance: { label: "senior analyst", color: "var(--chart-4)" },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -128,6 +130,7 @@ export function AnalyzePage({
   reportTheme,
   presetId,
   planningEnabled,
+  routerEnabled,
   sessionId,
   recoverySnapshot,
 }: AnalyzePageProps) {
@@ -237,7 +240,7 @@ export function AnalyzePage({
       const controller = new AbortController();
       abortControllerRef.current = controller;
       try {
-        const response = await startChatStream(sessionId, chatMessages, wsFiles, controller.signal, planText);
+        const response = await startChatStream(sessionId, chatMessages, wsFiles, controller.signal, planText, routerEnabled);
         if (!response.ok) throw new Error(`Server error: ${response.status}`);
         const reader = response.body?.getReader();
         if (!reader) throw new Error("No response body");
@@ -491,6 +494,29 @@ export function AnalyzePage({
     // ── Files ───────────────────────────────────────────────────────
     if (section.type === "File") return renderFileCards(section);
 
+    // ── Router Guidance (Senior Analyst) ─────────────────────────
+    if (section.type === "RouterGuidance") {
+      // Strip code fences so guidance renders as plain prose, not code blocks
+      const cleanContent = section.content
+        .replace(/```[\w]*\n?/g, "")
+        .replace(/\n?```/g, "")
+        .trim();
+      return (
+        <div className="border-l-2 border-amber-500/40 bg-amber-500/[0.03] p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-3 bg-amber-500/60" />
+            <span className="text-[9px] font-mono text-amber-600 dark:text-amber-400 uppercase tracking-widest font-semibold">
+              Senior Analyst
+            </span>
+          </div>
+          <div className="text-[14px] leading-[1.75] text-foreground/80 whitespace-pre-wrap break-words">
+            {cleanContent}
+            {isStreaming && <span className="streaming-cursor" />}
+          </div>
+        </div>
+      );
+    }
+
     return null;
   };
 
@@ -675,9 +701,6 @@ export function AnalyzePage({
       
       {/* Background Ambience */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-         <div className="absolute inset-0 opacity-40 dark:opacity-60 saturate-50 mix-blend-luminosity dark:mix-blend-screen">
-           <DitheringBackground />
-         </div>
          <div className="absolute top-[10%] left-[10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-primary/10 rounded-full blur-[80px] md:blur-[120px] mix-blend-normal" />
          <div className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[50vw] bg-[#E5A84B]/10 dark:bg-[#F5C76A]/10 rounded-full blur-[100px] md:blur-[140px]" />
          <div className="absolute inset-0 z-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay" />

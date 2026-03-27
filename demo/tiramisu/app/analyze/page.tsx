@@ -54,7 +54,7 @@ function AnalyzeContent() {
       if (raw) {
         const snap: SessionSnapshot = JSON.parse(raw);
         consumedRef.current = true;
-        setTransfer({ prompt: snap.prompt, files: [], reportTheme: snap.reportTheme, presetId: snap.presetId, planningEnabled: snap.planningEnabled ?? true });
+        setTransfer({ prompt: snap.prompt, files: [], reportTheme: snap.reportTheme, presetId: snap.presetId, planRouterEnabled: snap.planRouterEnabled ?? false });
         setRecoverySnapshot(snap);
         return;
       }
@@ -91,7 +91,8 @@ function AnalyzeContent() {
       files={transfer.files}
       reportTheme={transfer.reportTheme}
       presetId={transfer.presetId}
-      planningEnabled={transfer.planningEnabled}
+      planningEnabled={transfer.planRouterEnabled}
+      routerEnabled={transfer.planRouterEnabled}
       sessionId={sessionId}
       recoverySnapshot={recoverySnapshot}
     />

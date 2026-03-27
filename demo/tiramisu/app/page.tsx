@@ -18,17 +18,17 @@ export default function Home() {
   const [files, setFiles] = useState<File[]>([]);
   const [reportTheme, setReportTheme] = useState("modern");
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-  const [planningEnabled, setPlanningEnabled] = useState(true);
+  const [planRouterEnabled, setPlanRouterEnabled] = useState(false);
 
   // Hydrate from localStorage after mount (avoids SSR mismatch)
   useEffect(() => {
-    const stored = localStorage.getItem("planningEnabled");
-    if (stored === "false") setPlanningEnabled(false);
+    const stored = localStorage.getItem("planRouterEnabled");
+    if (stored === "true") setPlanRouterEnabled(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("planningEnabled", String(planningEnabled));
-  }, [planningEnabled]);
+    localStorage.setItem("planRouterEnabled", String(planRouterEnabled));
+  }, [planRouterEnabled]);
 
   const handlePresetSelect = (presetId: string, promptText: string) => {
     setSelectedPresetId(presetId);
@@ -42,7 +42,7 @@ export default function Home() {
       files,
       reportTheme,
       presetId: selectedPresetId,
-      planningEnabled,
+      planRouterEnabled,
     });
     router.push(`/analyze?tid=${tid}`);
   };
@@ -119,8 +119,8 @@ export default function Home() {
                onFilesChange={setFiles}
                reportTheme={reportTheme}
                onReportThemeChange={setReportTheme}
-               planningEnabled={planningEnabled}
-               onPlanningEnabledChange={setPlanningEnabled}
+               planRouterEnabled={planRouterEnabled}
+               onPlanRouterEnabledChange={setPlanRouterEnabled}
                isLoading={false}
                onSubmit={handleAnalyze}
              />

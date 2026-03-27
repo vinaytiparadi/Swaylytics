@@ -39,7 +39,8 @@ export function startChatStream(
   messages: { role: string; content: string }[],
   workspace: string[],
   signal: AbortSignal,
-  plan?: string | null
+  plan?: string | null,
+  routerEnabled?: boolean
 ): Promise<Response> {
   return fetch(`${BACKEND_URL}/chat/completions`, {
     method: "POST",
@@ -54,6 +55,7 @@ export function startChatStream(
       stream: true,
       session_id: sessionId,
       ...(plan ? { plan } : {}),
+      ...(routerEnabled ? { router_enabled: true } : {}),
     }),
   });
 }

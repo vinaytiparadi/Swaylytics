@@ -62,10 +62,11 @@ async def chat(body: dict = Body(...)):
     workspace = body.get("workspace", [])
     session_id = body.get("session_id", "default")
     plan = body.get("plan")
+    router_enabled = bool(body.get("router_enabled", False))
     runtime_config = build_chat_runtime_config(body)
 
     def generate():
-        for delta_content in bot_stream(messages, workspace, session_id, runtime_config, plan=plan):
+        for delta_content in bot_stream(messages, workspace, session_id, runtime_config, plan=plan, router_enabled=router_enabled):
             chunk = {
                 "id": "chatcmpl-stream",
                 "object": "chat.completion.chunk",
