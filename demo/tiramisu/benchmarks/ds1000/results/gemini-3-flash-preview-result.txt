@@ -1,0 +1,50 @@
+============================================================
+FULL RESULTS (all libraries)
+============================================================
+          score
+count  1000.000
+mean      0.617
+
+           score       
+           count   mean
+library                
+Matplotlib   155  0.858
+Numpy        220  0.727
+Pandas       291  0.488
+Pytorch       68  0.000
+Scipy        106  0.660
+Sklearn      115  0.687
+Tensorflow    45  0.733
+
+                  score       
+                  count   mean
+perturbation_type             
+Difficult-Rewrite   162  0.475
+Origin              452  0.688
+Semantic            234  0.603
+Surface             152  0.579
+
+============================================================
+FILTERED RESULTS (excluding Pytorch)
+============================================================
+         score
+count  932.000
+mean     0.662
+
+           score       
+           count   mean
+library                
+Matplotlib   155  0.858
+Numpy        220  0.727
+Pandas       291  0.488
+Scipy        106  0.660
+Sklearn      115  0.687
+Tensorflow    45  0.733
+
+                  score       
+                  count   mean
+perturbation_type             
+Difficult-Rewrite   154  0.500
+Origin              430  0.723
+Semantic            223  0.632
+Surface             125  0.704

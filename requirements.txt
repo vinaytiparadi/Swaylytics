@@ -11,6 +11,7 @@ plotly
 statsmodels
 textblob
 scipy
+tensorflow
 
 # Web UI
 requests
