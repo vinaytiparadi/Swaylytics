@@ -17,13 +17,13 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      className="rounded-none"
+      className="rounded-none border border-primary/20 bg-background/50 backdrop-blur-md hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary size-10 sm:size-11"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
     >
       {theme === "dark" ? (
-        <Sun className="size-5" />
+        <Sun className="size-4 sm:size-4.5" />
       ) : (
-        <Moon className="size-5" />
+        <Moon className="size-4 sm:size-4.5" />
       )}
     </Button>
   );

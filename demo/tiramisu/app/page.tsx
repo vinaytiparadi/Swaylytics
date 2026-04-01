@@ -105,13 +105,13 @@ export default function Home() {
       </div>
 
       {/* Extreme Minimal Universal Header */}
-      <div className="absolute top-4 sm:top-6 right-4 sm:right-8 z-40 flex items-center gap-2">
+      <div className="absolute top-4 sm:top-6 right-4 sm:right-8 z-40 flex items-center gap-2 sm:gap-3">
          <button
            onClick={() => setDynamicBgEnabled(!dynamicBgEnabled)}
-           className="p-2 rounded-full border border-primary/20 bg-background/50 backdrop-blur-md hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary group"
+           className="size-10 sm:size-11 rounded-none border border-primary/20 bg-background/50 backdrop-blur-md hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary flex items-center justify-center group"
            title={dynamicBgEnabled ? "Disable Dynamic Background" : "Enable Dynamic Background"}
          >
-           {dynamicBgEnabled ? <Zap className="size-4" /> : <ZapOff className="size-4" />}
+           {dynamicBgEnabled ? <Zap className="size-4 sm:size-4.5" /> : <ZapOff className="size-4 sm:size-4.5" />}
          </button>
          <div className="pointer-events-auto">
             <ThemeToggle />

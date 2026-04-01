@@ -8,8 +8,25 @@ import {
 } from "@/components/ui/prompt-input";
 import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-selector";
-import { ArrowUp, Paperclip, Mic, Square, X, Sparkles, ChevronDown } from "lucide-react";
-import { useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  ArrowUp,
+  Paperclip,
+  Mic,
+  Square,
+  X,
+  Sparkles,
+  ChevronDown,
+  Zap,
+  Package,
+  Check,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { EngineType } from "@/lib/transfer-store";
 
 interface PromptInputEnhancedProps {
@@ -42,12 +59,11 @@ export function PromptInputEnhanced({
   onSubmit,
 }: PromptInputEnhancedProps) {
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const [engineDropdownOpen, setEngineDropdownOpen] = useState(false);
-  const engineDropdownRef = useRef<HTMLDivElement>(null);
+  const [enginePopoverOpen, setEnginePopoverOpen] = useState(false);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      const newFiles = Array.from(event.target.files);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
       onFilesChange([...files, ...newFiles]);
     }
   };
@@ -99,13 +115,13 @@ export function PromptInputEnhanced({
       </div>
 
       {/* Structural Bottom Actions */}
-      <PromptInputActions className="flex items-center justify-between border-t border-border/40 pt-2 mt-1">
+      <PromptInputActions className="flex flex-wrap items-center justify-between border-t border-border/40 pt-3 mt-1 gap-y-3">
         {/* Left: Operations */}
-        <div className="flex items-center gap-4 sm:gap-6">
+        <div className="flex items-center flex-wrap gap-0.5 sm:gap-1 flex-shrink-0">
           <PromptInputAction tooltip="Attach Dataset [CSV, PDF, etc]">
             <label
               htmlFor="file-upload"
-              className="group flex cursor-pointer items-center border border-primary/40 bg-primary/10 hover:bg-primary/20 transition-all"
+              className="group flex size-10 sm:size-11 cursor-pointer items-center justify-center border border-border/20 bg-secondary/30 hover:bg-secondary/60 transition-all rounded-none flex-shrink-0"
             >
               <input
                 ref={uploadInputRef}
@@ -115,85 +131,105 @@ export function PromptInputEnhanced({
                 className="hidden"
                 id="file-upload"
               />
-              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-primary flex items-center justify-center transition-colors">
-                <Paperclip className="text-primary-foreground size-4 sm:size-4.5" />
-              </div>
-              <span className="px-3 sm:px-4 font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-primary font-bold mt-0.5">Attach_Data</span>
+              <Paperclip className="text-primary size-4 sm:size-4.5" />
             </label>
           </PromptInputAction>
 
-          <div className="w-px h-6 bg-border/40 hidden sm:block" />
+          <div className="w-px h-6 bg-border/40 mx-px sm:mx-0.5" />
 
           <ThemeSelector
             value={reportTheme}
             onValueChange={onReportThemeChange}
           />
 
-          <div className="w-px h-6 bg-border/40 hidden sm:block" />
+          <div className="w-px h-6 bg-border/40 mx-px sm:mx-0.5" />
 
-          {/* Engine Selector Dropdown */}
-          <PromptInputAction tooltip={engine === "gemini" ? "Engine: Gemini 3 Flash (API)" : "Engine: DeepAnalyze-8B (Local)"}>
-            <div className="relative" ref={engineDropdownRef}>
-              <button
-                onClick={(e) => { e.stopPropagation(); setEngineDropdownOpen(!engineDropdownOpen); }}
-                onBlur={() => setTimeout(() => setEngineDropdownOpen(false), 150)}
-                className={`flex items-center gap-2 px-3 h-9 border transition-all font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.15em] font-bold ${engine === "gemini"
-                  ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
-                  : "border-border/20 bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
-                  }`}
+          {/* Engine Selector + Plan/Route Fused Group */}
+          <div className="flex items-center gap-0 flex-shrink-0">
+            <Popover open={enginePopoverOpen} onOpenChange={setEnginePopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    "flex items-center gap-2 h-10 sm:h-11 px-3 sm:px-4 border transition-all rounded-none group relative",
+                    engine === "gemini"
+                      ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
+                      : "border-border/20 bg-secondary/30 text-foreground hover:bg-secondary/60",
+                    engine === "deepanalyze" && "border-r-0"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
+                  title={engine === "gemini" ? "Engine: Gemini 3 Flash (API)" : "Engine: DeepAnalyze-8B (Local)"}
+                >
+                  {engine === "gemini" ? (
+                    <Zap className="size-4 text-blue-500 shrink-0" />
+                  ) : (
+                    <Package className="size-4 text-primary shrink-0" />
+                  )}
+                  <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.15em] font-bold">
+                    {engine === "gemini" ? "Gemini" : "DeepAnalyze"}
+                  </span>
+                  <ChevronDown className={cn("size-2.5 opacity-40 group-hover:opacity-100 transition-transform", enginePopoverOpen && "rotate-180")} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-48 rounded-none border border-border bg-popover/95 backdrop-blur-md p-1.5 shadow-xl"
+                align="start"
+                side="top"
+                onClick={(e) => e.stopPropagation()}
               >
-                <span className="hidden sm:inline">{engine === "gemini" ? "Gemini Flash" : "DeepAnalyze"}</span>
-                <span className="sm:hidden">{engine === "gemini" ? "Gemini" : "DA"}</span>
-                <ChevronDown className={`size-3 transition-transform ${engineDropdownOpen ? "rotate-180" : ""}`} />
-              </button>
-              {engineDropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 z-50 min-w-[180px] border border-border/40 bg-background/95 backdrop-blur-md shadow-xl">
+                <p className="px-3 pb-2 pt-1 font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground/80 border-b border-border/30 mb-1">
+                  Select_Engine
+                </p>
+                <div className="space-y-0.5">
                   <button
-                    onClick={(e) => { e.stopPropagation(); onEngineChange("deepanalyze"); setEngineDropdownOpen(false); }}
-                    className={`w-full text-left px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.15em] transition-colors flex items-center gap-2 ${engine === "deepanalyze" ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"}`}
+                    onClick={() => { onEngineChange("deepanalyze"); setEnginePopoverOpen(false); }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-[10px] font-mono uppercase tracking-widest transition-colors flex items-center gap-2.5 border-l-2 border-transparent hover:bg-accent hover:text-accent-foreground hover:border-primary",
+                      engine === "deepanalyze" && "bg-accent/50 text-foreground border-primary font-bold"
+                    )}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${engine === "deepanalyze" ? "bg-primary" : "bg-border"}`} />
+                    <Package className="size-3.5 text-primary" />
                     DeepAnalyze-8B
+                    {engine === "deepanalyze" && <Check className="size-3 ml-auto text-muted-foreground" />}
                   </button>
-                  <div className="h-px bg-border/30" />
                   <button
-                    onClick={(e) => { e.stopPropagation(); onEngineChange("gemini"); setEngineDropdownOpen(false); }}
-                    className={`w-full text-left px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.15em] transition-colors flex items-center gap-2 ${engine === "gemini" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold" : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"}`}
+                    onClick={() => { onEngineChange("gemini"); setEnginePopoverOpen(false); }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-[10px] font-mono uppercase tracking-widest transition-colors flex items-center gap-2.5 border-l-2 border-transparent hover:bg-accent hover:text-accent-foreground hover:border-blue-500",
+                      engine === "gemini" && "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500 font-bold"
+                    )}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${engine === "gemini" ? "bg-blue-500" : "bg-border"}`} />
+                    <Zap className="size-3.5 text-blue-500" />
                     Gemini 3 Flash
+                    {engine === "gemini" && <Check className="size-3 ml-auto text-muted-foreground" />}
                   </button>
                 </div>
-              )}
-            </div>
-          </PromptInputAction>
+              </PopoverContent>
+            </Popover>
 
-          {/* Plan + Route — only visible for DeepAnalyze engine */}
-          {engine === "deepanalyze" && (
-            <>
-              <div className="w-px h-6 bg-border/40 hidden sm:block" />
-
-              <PromptInputAction tooltip={planRouterEnabled ? "Plan + Router: ON — Gemini plans analysis and supervises execution (error recovery + checkpoints)" : "Plan + Router: OFF — Direct analysis without Gemini supervision"}>
+            {/* Plan + Route — attached to DeepAnalyze with NO gap */}
+            {engine === "deepanalyze" && (
+              <PromptInputAction tooltip={planRouterEnabled ? "Plan + Router: ON" : "Plan + Router: OFF"}>
                 <button
                   onClick={(e) => { e.stopPropagation(); onPlanRouterEnabledChange(!planRouterEnabled); }}
-                  className={`flex items-center gap-2 px-3 h-9 border transition-all font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.15em] font-bold ${planRouterEnabled
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                    : "border-border/20 bg-secondary/30 text-muted-foreground hover:bg-secondary/60"
-                    }`}
+                  className={cn(
+                    "flex items-center justify-center size-10 sm:size-11 border transition-all rounded-none",
+                    planRouterEnabled
+                      ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                      : "border-border/20 bg-secondary/30 text-foreground hover:bg-secondary/60"
+                  )}
                 >
-                  <Sparkles className="size-3.5" />
-                  <span className="hidden sm:inline">Plan + Route</span>
+                  <Sparkles className={cn("size-4 sm:size-4.5", planRouterEnabled ? "text-amber-500" : "text-muted-foreground/60")} />
                 </button>
               </PromptInputAction>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Right: Execute */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 ml-auto sm:ml-0">
           <PromptInputAction tooltip="Voice Command [Inactive]">
             <button
-              className="w-9 h-9 rounded-none flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+              className="size-10 sm:size-11 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/20 rounded-none flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
               <Mic className="size-4" />
@@ -206,7 +242,7 @@ export function PromptInputEnhanced({
             <Button
               variant="default"
               size="sm"
-              className="h-11 rounded-none px-6 sm:px-8 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.25em] bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-all"
+              className="h-10 sm:h-11 rounded-none px-6 sm:px-10 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.3em] bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-all shadow-lg shadow-primary/10 whitespace-nowrap"
               onClick={onSubmit}
             >
               {isLoading ? (
@@ -216,7 +252,7 @@ export function PromptInputEnhanced({
                 </div>
               ) : (
                 <div className="flex items-center gap-2.5">
-                  <span>Execute</span>
+                  <span className="mt-0.5">Execute</span>
                   <ArrowUp className="size-3.5" />
                 </div>
               )}
