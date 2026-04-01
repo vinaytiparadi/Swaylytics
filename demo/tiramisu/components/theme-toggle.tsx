@@ -2,29 +2,39 @@
 
 import { useTheme } from "next-themes";
 import { Sun, Moon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
-export function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+interface ThemeToggleProps {
+  className?: string;
+}
+
+export function ThemeToggle({ className }: ThemeToggleProps) {
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) return null;
+  if (!mounted) return (
+    <div className={cn("size-8 border border-border/20 bg-background/40", className)} />
+  );
+
+  const isDark = resolvedTheme === "dark";
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="rounded-none border border-primary/20 bg-background/50 backdrop-blur-md hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary size-10 sm:size-11"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-    >
-      {theme === "dark" ? (
-        <Sun className="size-4 sm:size-4.5" />
-      ) : (
-        <Moon className="size-4 sm:size-4.5" />
+    <button
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className={cn(
+        "flex items-center justify-center size-8 text-muted-foreground/70 hover:text-foreground transition-all duration-200 border border-border/20 hover:border-primary/40 hover:bg-primary/5",
+        className
       )}
-    </Button>
+      title={`Switch to ${isDark ? "light" : "dark"} theme`}
+    >
+      {isDark ? (
+        <Sun className="size-4" />
+      ) : (
+        <Moon className="size-4" />
+      )}
+    </button>
   );
 }

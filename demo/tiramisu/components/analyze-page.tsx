@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { useTheme } from "next-themes";
 import {
-  ArrowLeft,
   ArrowDown,
   ArrowUp,
   Copy,
@@ -16,8 +15,7 @@ import {
   Square,
   Trash2,
   X,
-  Terminal,
-  Image as ImageIcon,
+  ImageIcon,
   FileSpreadsheet,
   FileText,
   Sparkles,
@@ -632,7 +630,6 @@ export function AnalyzePage({
       const code = stripCodeFences(section.content).trim();
       const isLarge = code.length > 8000;
       // Check if next section is Execute (to attach it)
-      const hasAttachedOutput = nextSection?.type === "Execute" && nextSection.isComplete;
 
       return (
         <div className="terminal-card overflow-hidden border border-primary/20 bg-background shadow-md">
@@ -919,62 +916,61 @@ export function AnalyzePage({
          <div className="absolute inset-0 z-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay" />
       </div>
 
-      {/* Pinned Header — always full-width, never shifts */}
-      <div className="absolute top-3 sm:top-4 left-4 sm:left-8 right-4 sm:right-8 z-40 pointer-events-none flex justify-between items-start">
-        {/* Top Left */}
-        <div className="pointer-events-auto flex flex-col gap-1">
-          <span className="font-display font-medium text-lg sm:text-2xl tracking-tight text-foreground lowercase leading-none">
-            analyze<span className="text-primary font-bold italic tracking-tighter">.</span>
-          </span>
-          <div className="flex items-center gap-1.5 mt-0.5">
-             <div className="w-4 h-px bg-primary/40" />
-             <span className="font-mono text-[8px] sm:text-[9px] text-muted-foreground uppercase tracking-[0.3em]">Session_Active</span>
+      {/* Main Layout: Chat + Right Panel */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+
+        {/* Integrated Header Bar — occupies the top space ("green area") */}
+        <div className="flex items-center justify-between px-4 sm:px-8 h-12 flex-shrink-0 z-40 bg-background/20 backdrop-blur-xl border-b border-border/5">
+          {/* Top Left */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            <span className="font-display font-medium text-lg sm:text-xl tracking-tight text-foreground lowercase leading-none">
+              analyze<span className="text-primary font-bold italic tracking-tighter">.</span>
+            </span>
+          </div>
+
+          {/* Top Right */}
+          <div className="flex items-center gap-0.5 sm:gap-1">
+             <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 border border-border/20 bg-background/40">
+               <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-[0.1em] h-2.5 flex items-center">Status</span>
+               {phase === "streaming" || phase === "planning" ? (
+                 <div className="flex items-center gap-1.5 min-w-[65px]">
+                   <div className="w-1 h-1 bg-primary rounded-none animate-ping" />
+                   <span className="font-mono text-[9px] text-primary uppercase tracking-[0.1em] font-bold">
+                     {phase === "planning" ? "Planning" : "Synthesizing"}
+                   </span>
+                 </div>
+               ) : (
+                 <div className="flex items-center gap-1.5 min-w-[65px]">
+                   <div className="w-1 h-1 bg-border rounded-none" />
+                   <span className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-[0.1em]">Idle</span>
+                 </div>
+               )}
+             </div>
+             <button
+                onClick={() => setRightPanelOpen((p) => !p)}
+                className="hidden lg:flex items-center justify-center size-8 text-muted-foreground/70 hover:text-foreground transition-all duration-200 border border-border/20 hover:border-primary/40 hover:bg-primary/5 relative"
+                title={rightPanelOpen ? "Hide files panel" : "Show files panel"}
+              >
+                {rightPanelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+                {!rightPanelOpen && allArtifacts.length > 0 && (
+                  <div className="absolute top-1.5 right-1.5 w-1 h-1 bg-primary rounded-full shadow-[0_0_4px_rgba(var(--primary),0.5)]" />
+                )}
+              </button>
+             <ThemeToggle />
           </div>
         </div>
 
-        {/* Top Right */}
-        <div className="pointer-events-auto flex items-center gap-3 sm:gap-4">
-           <div className="hidden sm:flex flex-col items-end gap-1.5">
-             <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-[0.2em]">System State</span>
-             {phase === "streaming" || phase === "planning" ? (
-               <div className="flex items-center gap-2">
-                 <div className="w-1.5 h-1.5 bg-primary rounded-none animate-ping" />
-                 <span className="font-mono text-[9px] text-primary uppercase tracking-[0.2em] font-bold">
-                   {phase === "planning" ? "Planning" : "Synthesizing"}
-                 </span>
-               </div>
-             ) : (
-               <div className="flex items-center gap-2">
-                 <div className="w-1.5 h-1.5 bg-border rounded-none" />
-                 <span className="font-mono text-[9px] text-muted-foreground uppercase tracking-[0.2em]">Idle</span>
-               </div>
-             )}
-           </div>
-           <button
-              onClick={() => setRightPanelOpen((p) => !p)}
-              className="hidden lg:flex items-center justify-center size-8 text-muted-foreground/70 hover:text-foreground transition-all duration-200 border border-border/40 hover:border-primary/40 hover:bg-primary/5 relative"
-              title={rightPanelOpen ? "Hide files panel" : "Show files panel"}
-            >
-              {rightPanelOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
-              {!rightPanelOpen && allArtifacts.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center bg-primary text-primary-foreground font-mono text-[8px] font-bold px-1">{allArtifacts.length}</span>
-              )}
-            </button>
-           <ThemeToggle />
-        </div>
-      </div>
+        <div className="flex-1 flex h-full overflow-hidden">
 
-      {/* Main Layout: Chat + Right Panel */}
-      <div className="flex-1 flex h-full overflow-hidden relative z-10 pt-10 sm:pt-12">
-
-        {/* Left: Chat Area */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
+          {/* Left: Chat Area */}
+          <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]">
 
         {/* Scroll area */}
         <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-3xl px-4 sm:px-8 md:px-12 pb-2">
+          <div className="mx-auto max-w-3xl px-4 sm:px-8 md:px-12 pb-0">
 
           {renderUserBubble(prompt, files.map((f) => f.name), "initial")}
+
 
           {phase === "uploading" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-3 py-10">
@@ -1273,13 +1269,6 @@ export function AnalyzePage({
                       <span className="font-mono text-[9px] text-muted-foreground/60">{allArtifacts.length}</span>
                     )}
                   </div>
-                  <button
-                    onClick={() => setRightPanelOpen(false)}
-                    className="size-7 flex items-center justify-center text-muted-foreground/50 hover:text-foreground transition-colors"
-                    title="Close panel"
-                  >
-                    <PanelRightClose className="size-3.5" />
-                  </button>
                 </div>
 
                 {/* Divider */}
@@ -1486,7 +1475,8 @@ export function AnalyzePage({
         )}
       </AnimatePresence>
 
-    </div>{/* End main layout */}
+    </div>
+    </div>
   </div>
   );
 }
