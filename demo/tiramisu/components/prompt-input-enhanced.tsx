@@ -81,11 +81,11 @@ export function PromptInputEnhanced({
       onValueChange={onInputChange}
       isLoading={isLoading}
       onSubmit={onSubmit}
-      className="w-full flex flex-col gap-2 !rounded-none !border-0 !bg-transparent !p-0 !shadow-none ring-0"
+      className="w-full flex flex-col gap-1 !rounded-none !border-0 !bg-transparent !p-0 !shadow-none ring-0"
     >
       {/* Attached Files Above Input */}
       {files.length > 0 && (
-        <div className="flex flex-wrap gap-2 pb-1">
+        <div className="flex flex-wrap gap-1.5 pb-0">
           {files.map((file, index) => (
             <div
               key={index}
@@ -106,11 +106,11 @@ export function PromptInputEnhanced({
       )}
 
       {/* Flowing Input */}
-      <div className="relative group">
-        <div className="absolute left-0 top-3 w-1 h-5 sm:h-8 bg-primary/40 hidden sm:block opacity-50 group-focus-within:opacity-100 transition-opacity" />
+      <div className="relative group w-full">
+        <div className="absolute left-0 top-[14px] sm:top-[20px] md:top-[24px] w-1 h-5 sm:h-7 md:h-8 bg-primary/40 hidden sm:block opacity-50 group-focus-within:opacity-100 transition-opacity rounded-full" />
         <PromptInputTextarea
           placeholder="what shall we discover today?"
-          className="dark:bg-transparent !text-2xl sm:!text-3xl md:!text-4xl !font-display !font-medium !tracking-tight placeholder:text-muted-foreground/30 !min-h-[50px] sm:!min-h-[70px] !pl-0 sm:!pl-6 !py-1 focus-visible:!ring-0 transition-all focus:placeholder:opacity-0 caret-primary"
+          className="dark:bg-transparent !text-xl sm:!text-2xl md:!text-3xl !font-display !font-medium !tracking-tight placeholder:text-muted-foreground/30 !min-h-[50px] sm:!min-h-[70px] !pl-0 sm:!pl-6 !pr-0 !pt-[12px] sm:!pt-[16px] md:!pt-[20px] !pb-4 focus-visible:!ring-0 transition-all focus:placeholder:opacity-0 caret-primary w-full"
         />
       </div>
 
@@ -121,7 +121,7 @@ export function PromptInputEnhanced({
           <PromptInputAction tooltip="Attach Dataset [CSV, PDF, etc]">
             <label
               htmlFor="file-upload"
-              className="group flex size-10 sm:size-11 cursor-pointer items-center justify-center border border-border/20 bg-secondary/30 hover:bg-secondary/60 transition-all rounded-none flex-shrink-0"
+              className="group flex size-9 sm:size-10 cursor-pointer items-center justify-center border border-border/20 bg-secondary/30 hover:bg-secondary/60 transition-all rounded-none flex-shrink-0"
             >
               <input
                 ref={uploadInputRef}
@@ -131,7 +131,7 @@ export function PromptInputEnhanced({
                 className="hidden"
                 id="file-upload"
               />
-              <Paperclip className="text-primary size-4 sm:size-4.5" />
+              <Paperclip className="text-primary size-3.5 sm:size-4" />
             </label>
           </PromptInputAction>
 
@@ -150,7 +150,7 @@ export function PromptInputEnhanced({
               <PopoverTrigger asChild>
                 <button
                   className={cn(
-                    "flex items-center gap-2 h-10 sm:h-11 px-3 sm:px-4 border transition-all rounded-none group relative",
+                    "flex items-center gap-2 h-9 sm:h-10 px-3 sm:px-3.5 border transition-all rounded-none group relative",
                     engine === "gemini"
                       ? "border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20"
                       : "border-border/20 bg-secondary/30 text-foreground hover:bg-secondary/60",
@@ -160,9 +160,9 @@ export function PromptInputEnhanced({
                   title={engine === "gemini" ? "Engine: Gemini 3 Flash (API)" : "Engine: DeepAnalyze-8B (Local)"}
                 >
                   {engine === "gemini" ? (
-                    <Zap className="size-4 text-blue-500 shrink-0" />
+                    <Zap className="size-3.5 text-blue-500 shrink-0" />
                   ) : (
-                    <Package className="size-4 text-primary shrink-0" />
+                    <Package className="size-3.5 text-primary shrink-0" />
                   )}
                   <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.15em] font-bold">
                     {engine === "gemini" ? "Gemini" : "DeepAnalyze"}
@@ -212,13 +212,13 @@ export function PromptInputEnhanced({
                 <button
                   onClick={(e) => { e.stopPropagation(); onPlanRouterEnabledChange(!planRouterEnabled); }}
                   className={cn(
-                    "flex items-center justify-center size-10 sm:size-11 border transition-all rounded-none",
+                    "flex items-center justify-center size-9 sm:size-10 border transition-all rounded-none",
                     planRouterEnabled
                       ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
                       : "border-border/20 bg-secondary/30 text-foreground hover:bg-secondary/60"
                   )}
                 >
-                  <Sparkles className={cn("size-4 sm:size-4.5", planRouterEnabled ? "text-amber-500" : "text-muted-foreground/60")} />
+                  <Sparkles className={cn("size-3.5 sm:size-4", planRouterEnabled ? "text-amber-500" : "text-muted-foreground/60")} />
                 </button>
               </PromptInputAction>
             )}
@@ -229,10 +229,10 @@ export function PromptInputEnhanced({
         <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 ml-auto sm:ml-0">
           <PromptInputAction tooltip="Voice Command [Inactive]">
             <button
-              className="size-10 sm:size-11 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/20 rounded-none flex-shrink-0"
+              className="size-9 sm:size-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors border border-transparent hover:border-border/20 rounded-none flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
-              <Mic className="size-4" />
+              <Mic className="size-3.5 sm:size-4" />
             </button>
           </PromptInputAction>
 
@@ -242,7 +242,7 @@ export function PromptInputEnhanced({
             <Button
               variant="default"
               size="sm"
-              className="h-10 sm:h-11 rounded-none px-6 sm:px-10 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.3em] bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-all shadow-lg shadow-primary/10 whitespace-nowrap"
+              className="h-9 sm:h-10 rounded-none px-4 sm:px-6 font-mono text-[9px] sm:text-[10px] uppercase tracking-[0.3em] bg-foreground text-background hover:bg-primary hover:text-primary-foreground transition-all shadow-lg shadow-primary/10 whitespace-nowrap"
               onClick={onSubmit}
             >
               {isLoading ? (

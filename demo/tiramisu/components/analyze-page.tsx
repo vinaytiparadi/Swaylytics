@@ -922,7 +922,7 @@ export function AnalyzePage({
           {/* Top Left */}
           <div className="flex items-center gap-3 sm:gap-4">
             <span className="font-display font-medium text-lg sm:text-xl tracking-tight text-foreground lowercase leading-none">
-              analyze<span className="text-primary font-bold italic tracking-tighter">.</span>
+              <span className="text-primary italic pr-[1px]">sway</span>lytics<span className="text-primary font-bold italic tracking-tighter">.</span>
             </span>
           </div>
 
