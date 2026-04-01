@@ -245,19 +245,54 @@ export function AnalyzePage({
     }
   }, [phase, allArtifacts.length]);
 
-  // ── Save snapshot to sessionStorage on completion ──────────────────
-  useEffect(() => {
-    if (phase !== "complete") return;
+  // ── Save snapshot to sessionStorage (on completion + periodically during streaming) ──
+  const snapshotTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Helper: write current state as a snapshot
+  const writeSnapshot = useCallback(() => {
     try {
+      const content = pendingContentRef.current || accumulatedContent;
+      if (!content && phase === "streaming") return; // nothing to save yet
       const snap: SessionSnapshot = {
         prompt, reportTheme, presetId, phase,
-        accumulatedContent, completedTurns, messages, workspaceFileNames, plan, engine,
-        reportStatus: reportStatus === "ready" ? "ready" : undefined,
-        reportUrl: reportStatus === "ready" ? reportUrl : undefined,
+        accumulatedContent: content,
+        completedTurns, messages, workspaceFileNames, plan, engine,
+        reportStatus,
+        reportUrl,
       };
       sessionStorage.setItem(`snapshot:${sessionId}`, JSON.stringify(snap));
     } catch { /* quota — non-critical */ }
-  }, [phase, sessionId, prompt, reportTheme, presetId, accumulatedContent, completedTurns, messages, workspaceFileNames, plan, reportStatus, reportUrl]);
+  }, [sessionId, prompt, reportTheme, presetId, accumulatedContent, completedTurns, messages, workspaceFileNames, plan, engine, reportStatus, reportUrl, phase]);
+
+  // Save immediately on completion (and whenever completion-phase state changes)
+  useEffect(() => {
+    if (phase !== "complete") return;
+    writeSnapshot();
+  }, [phase, writeSnapshot]);
+
+  // Save periodically during streaming so HMR/refresh can recover partial content
+  useEffect(() => {
+    if (phase !== "streaming") {
+      if (snapshotTimerRef.current) { clearInterval(snapshotTimerRef.current); snapshotTimerRef.current = null; }
+      return;
+    }
+    // Save every 3 seconds during streaming
+    snapshotTimerRef.current = setInterval(() => {
+      try {
+        const content = pendingContentRef.current;
+        if (!content) return;
+        const snap: SessionSnapshot = {
+          prompt, reportTheme, presetId, phase: "streaming",
+          accumulatedContent: content,
+          completedTurns, messages, workspaceFileNames, plan, engine,
+          reportStatus: "idle",
+          reportUrl: null,
+        };
+        sessionStorage.setItem(`snapshot:${sessionId}`, JSON.stringify(snap));
+      } catch { /* quota — non-critical */ }
+    }, 3000);
+    return () => { if (snapshotTimerRef.current) { clearInterval(snapshotTimerRef.current); snapshotTimerRef.current = null; } };
+  }, [phase, sessionId, prompt, reportTheme, presetId, completedTurns, messages, workspaceFileNames, plan, engine]);
 
   // ── Auto-trigger HTML report generation on completion ─────────────
   useEffect(() => {
@@ -409,9 +444,11 @@ export function AnalyzePage({
 
   // ── Initial upload ────────────────────────────────────────────────
   useEffect(() => {
-    // Restore from snapshot (completed session recovery)
+    // Restore from snapshot (completed or interrupted session recovery)
     if (recoverySnapshot) {
-      setPhase(recoverySnapshot.phase as Phase);
+      // Always restore as "complete" — even if the snapshot was mid-stream,
+      // the SSE connection is gone so we show whatever was accumulated.
+      setPhase("complete");
       setAccumulatedContent(recoverySnapshot.accumulatedContent);
       pendingContentRef.current = recoverySnapshot.accumulatedContent;
       displayedContentRef.current = recoverySnapshot.accumulatedContent;
@@ -420,10 +457,13 @@ export function AnalyzePage({
       setWorkspaceFileNames(recoverySnapshot.workspaceFileNames);
       setPlan(recoverySnapshot.plan ?? null);
       setUploadProgress(100);
-      if (recoverySnapshot.reportStatus === "ready" && recoverySnapshot.reportUrl) {
-        setReportStatus("ready");
-        setReportUrl(recoverySnapshot.reportUrl);
-      }
+      // Restore report state — never auto-trigger on recovery.
+      // "generating" becomes "cancelled" (the fetch was interrupted by refresh).
+      // "idle" becomes "cancelled" too (don't auto-start report on refresh).
+      const savedStatus = recoverySnapshot.reportStatus ?? "cancelled";
+      const restoredStatus = (savedStatus === "generating" || savedStatus === "idle") ? "cancelled" : savedStatus;
+      setReportStatus(restoredStatus);
+      if (recoverySnapshot.reportUrl) setReportUrl(recoverySnapshot.reportUrl);
       // Re-fetch artifacts from backend (workspace is still intact)
       fetchWorkspaceFiles(sessionId).then((ws) => {
         setArtifacts(ws.filter((f) => f.is_generated));

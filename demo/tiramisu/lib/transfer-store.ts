@@ -23,18 +23,14 @@ const pending = new Map<string, TransferData>();
 
 const SS_PREFIX = "transfer:";
 
-/** Wipe stale per-session entries when starting a fresh analysis in the same tab. */
-function cleanupStaleEntries(): void {
+/** Wipe only stale transfer entries — leave snapshots and sessions intact
+ *  so that previous analyses survive when starting a new one in the same tab. */
+function cleanupStaleTransfers(): void {
   try {
     const keysToRemove: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
-      if (
-        key &&
-        (key.startsWith(SS_PREFIX) ||
-          key.startsWith("snapshot:") ||
-          key.startsWith("session:"))
-      ) {
+      if (key && key.startsWith(SS_PREFIX)) {
         keysToRemove.push(key);
       }
     }
@@ -45,7 +41,7 @@ function cleanupStaleEntries(): void {
 }
 
 export function storeTransfer(data: TransferData): string {
-  cleanupStaleEntries();
+  cleanupStaleTransfers();
   const id = crypto.randomUUID();
   pending.set(id, data);
 

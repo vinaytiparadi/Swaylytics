@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { consumeTransfer, popActiveSession, type TransferData } from "@/lib/transfer-store";
+import { consumeTransfer, type TransferData } from "@/lib/transfer-store";
 import { stopGeneration } from "@/lib/api";
 import { AnalyzePage, type SessionSnapshot } from "@/components/analyze-page";
 
@@ -33,27 +33,27 @@ function AnalyzeContent() {
     // Guard against React Strict Mode double-invocation
     if (consumedRef.current) return;
 
-    // Helper: stop any lingering backend stream, then redirect to landing
-    const stopAndRedirect = async () => {
-      const staleSession = popActiveSession();
-      if (staleSession) {
-        // Await so the fetch completes before navigation cancels it
-        await stopGeneration(staleSession).catch(() => {});
-      }
+    // Redirect to landing — don't stop any backend stream; other sessions
+    // may still be legitimately running.
+    const redirectToHome = () => {
       router.replace("/");
     };
 
     if (!tid) {
-      stopAndRedirect();
+      redirectToHome();
       return;
     }
 
-    // Check for a completed session snapshot (survives reloads)
+    // Check for a session snapshot (completed or mid-stream; survives reloads/HMR)
     try {
       const raw = sessionStorage.getItem(`snapshot:${sessionId}`);
       if (raw) {
         const snap: SessionSnapshot = JSON.parse(raw);
         consumedRef.current = true;
+        // If snapshot was mid-stream, stop the backend stream (our SSE connection is gone)
+        if (snap.phase === "streaming") {
+          stopGeneration(sessionId).catch(() => {});
+        }
         setTransfer({ prompt: snap.prompt, files: [], reportTheme: snap.reportTheme, presetId: snap.presetId, planRouterEnabled: snap.planRouterEnabled ?? false, engine: snap.engine ?? "deepanalyze" });
         setRecoverySnapshot(snap);
         return;
@@ -64,7 +64,7 @@ function AnalyzeContent() {
     const data = consumeTransfer(tid);
     if (!data) {
       // No transfer and no snapshot — stop any stale stream and redirect
-      stopAndRedirect();
+      redirectToHome();
       return;
     }
     consumedRef.current = true;
