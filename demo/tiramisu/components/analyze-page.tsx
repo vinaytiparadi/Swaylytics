@@ -136,7 +136,7 @@ function extractCodeLanguage(content: string): string {
 }
 
 function stripCodeFences(content: string): string {
-  return content.replace(/^```\w*\n?/, "").replace(/\n?```\s*$/, "");
+  return content.trim().replace(/^```\w*\n?/, "").replace(/\n?```\s*$/, "");
 }
 
 function getFileIcon(name: string) {
