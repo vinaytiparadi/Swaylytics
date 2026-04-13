@@ -113,6 +113,8 @@ export interface HtmlReportResult {
   html_file: string;
   view_url: string;
   rel_path: string;
+  model_used?: string;
+  fallback?: boolean;
 }
 
 export async function generateHtmlReport(

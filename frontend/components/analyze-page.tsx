@@ -82,6 +82,7 @@ export interface SessionSnapshot {
   engine?: EngineType;
   reportStatus?: "idle" | "generating" | "ready" | "error" | "cancelled";
   reportUrl?: string | null;
+  reportFallback?: boolean;
 }
 
 interface AnalyzePageProps {
@@ -195,6 +196,7 @@ export function AnalyzePage({
   const [reportStatus, setReportStatus] = useState<"idle" | "generating" | "ready" | "error" | "cancelled">("idle");
   const [reportUrl, setReportUrl] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [reportFallback, setReportFallback] = useState(false);
   const reportAbortRef = useRef<AbortController | null>(null);
   const reportGenIdRef = useRef(0);
 
@@ -257,10 +259,11 @@ export function AnalyzePage({
         completedTurns, messages, workspaceFileNames, plan, engine,
         reportStatus,
         reportUrl,
+        reportFallback,
       };
       sessionStorage.setItem(`snapshot:${sessionId}`, JSON.stringify(snap));
     } catch { /* quota — non-critical */ }
-  }, [sessionId, prompt, reportTheme, presetId, accumulatedContent, completedTurns, messages, workspaceFileNames, plan, engine, reportStatus, reportUrl, phase]);
+  }, [sessionId, prompt, reportTheme, presetId, accumulatedContent, completedTurns, messages, workspaceFileNames, plan, engine, reportStatus, reportUrl, reportFallback, phase]);
 
   // Save immediately on completion (and whenever completion-phase state changes)
   useEffect(() => {
@@ -310,6 +313,7 @@ export function AnalyzePage({
       .then((result) => {
         if (reportGenIdRef.current !== genId) return; // stale
         setReportUrl(`${BACKEND_URL}${result.view_url}`);
+        setReportFallback(result.fallback ?? false);
         setReportStatus("ready");
       })
       .catch((err) => {
@@ -336,6 +340,7 @@ export function AnalyzePage({
   const handleRetryReport = useCallback(() => {
     setReportStatus("idle");
     setReportError(null);
+    setReportFallback(false);
   }, []);
 
   const handleRegenerateReport = useCallback(() => {
@@ -345,6 +350,7 @@ export function AnalyzePage({
     reportGenIdRef.current++;
     setReportUrl(null);
     setReportError(null);
+    setReportFallback(false);
     // Set to idle so the auto-trigger effect picks it up
     setReportStatus("idle");
   }, []);
@@ -462,6 +468,7 @@ export function AnalyzePage({
       const restoredStatus = (savedStatus === "generating" || savedStatus === "idle") ? "cancelled" : savedStatus;
       setReportStatus(restoredStatus);
       if (recoverySnapshot.reportUrl) setReportUrl(recoverySnapshot.reportUrl);
+      if (recoverySnapshot.reportFallback) setReportFallback(true);
       // Re-fetch artifacts from backend (workspace is still intact)
       fetchWorkspaceFiles(sessionId).then((ws) => {
         setArtifacts(ws.filter((f) => f.is_generated));
@@ -560,6 +567,7 @@ export function AnalyzePage({
     setReportStatus("idle");
     setReportUrl(null);
     setReportError(null);
+    setReportFallback(false);
     await startStream(newMessages, updatedWsFiles);
   }, [followUpInput, followUpFiles, sessionId, accumulatedContent, messages, workspaceFileNames, startStream, dedupedArtifacts]);
 
@@ -1093,7 +1101,12 @@ export function AnalyzePage({
                         className="w-full border border-primary/30 bg-primary/[0.04] hover:bg-primary/[0.08] p-4 text-left">
                         <div className="flex items-center gap-3">
                           <Sparkles className="size-4 text-primary" />
-                          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary font-bold">View_Report</span>
+                          <div>
+                            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary font-bold">View_Report</span>
+                            {reportFallback && (
+                              <p className="font-mono text-[8px] text-muted-foreground/50 mt-0.5">Fallback to Gemini 3 Flash</p>
+                            )}
+                          </div>
                         </div>
                       </button>
                     </motion.div>
@@ -1457,7 +1470,7 @@ export function AnalyzePage({
                                 View Report
                               </div>
                               <p className="text-[9px] text-muted-foreground/50 font-mono">
-                                Open in new tab
+                                {reportFallback ? "Fallback to Gemini 3 Flash" : "Open in new tab"}
                               </p>
                             </div>
                             <ArrowUp className="size-3.5 text-primary/40 group-hover:text-primary group-hover:-translate-y-0.5 transition-all duration-200 rotate-45 flex-shrink-0" />

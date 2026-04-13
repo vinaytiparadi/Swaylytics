@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 import mimetypes
@@ -26,7 +27,11 @@ GEMINI_API_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
 GEMINI_REPORT_MODEL = "gemini-3.1-pro-preview"
+GEMINI_FALLBACK_MODEL = "gemini-3-flash-preview"
 _MAX_REPORT_IMAGES = 20
+_REPORT_MAX_RETRIES = 2
+_REPORT_RETRY_BACKOFF = [2, 4]  # seconds
+_REPORT_RETRYABLE_STATUS = {429, 500, 502, 503}
 
 
 def extract_sections_from_messages(messages: list[dict[str, Any]]) -> str:
@@ -785,48 +790,8 @@ prominent, and beautifully framed within the design.
     """)
 
 
-async def _call_gemini_report(
-    prompt_text: str,
-    images: list[dict[str, str]],
-) -> str:
-    """Call Gemini 3.1 Pro Preview to generate the HTML report."""
-    url = GEMINI_API_URL.format(model=GEMINI_REPORT_MODEL)
-
-    parts: list[dict[str, Any]] = [{"text": prompt_text}]
-    for img in images:
-        parts.append(
-            {
-                "inline_data": {
-                    "mime_type": img["mime_type"],
-                    "data": img["base64_data"],
-                }
-            }
-        )
-
-    payload: dict[str, Any] = {
-        "contents": [{"parts": parts}],
-        "generationConfig": {
-            "temperature": 1,
-            "maxOutputTokens": 65536,
-            "thinkingConfig": {"thinkingLevel": "medium"},
-        },
-    }
-
-    timeout = httpx.Timeout(connect=30, read=180, write=30, pool=30)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        log.info("Calling Gemini %s for HTML report (%d parts)...", GEMINI_REPORT_MODEL, len(parts))
-        resp = await client.post(
-            url,
-            headers={"x-goog-api-key": settings.gemini_api_key},
-            json=payload,
-        )
-        if resp.status_code != 200:
-            log.error("Gemini API error %d: %s", resp.status_code, resp.text[:1000])
-        resp.raise_for_status()
-        data = resp.json()
-        log.info("Gemini report response received, candidates=%d", len(data.get("candidates", [])))
-
-    # Extract text from response — skip thinking parts
+def _extract_html_from_response(data: dict[str, Any]) -> str:
+    """Extract HTML content from a Gemini API response, skipping thinking parts."""
     text_parts: list[str] = []
     for candidate in data.get("candidates", []):
         for part in candidate.get("content", {}).get("parts", []):
@@ -850,6 +815,109 @@ async def _call_gemini_report(
         return html_match.group(1).strip()
 
     return raw
+
+
+async def _call_gemini_report_single(
+    model: str,
+    prompt_text: str,
+    images: list[dict[str, str]],
+    thinking_level: str = "medium",
+) -> str:
+    """Call a single Gemini model with retry logic for transient errors."""
+    url = GEMINI_API_URL.format(model=model)
+
+    parts: list[dict[str, Any]] = [{"text": prompt_text}]
+    for img in images:
+        parts.append(
+            {
+                "inline_data": {
+                    "mime_type": img["mime_type"],
+                    "data": img["base64_data"],
+                }
+            }
+        )
+
+    payload: dict[str, Any] = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "temperature": 1,
+            "maxOutputTokens": 65536,
+            "thinkingConfig": {"thinkingLevel": thinking_level},
+        },
+    }
+
+    timeout = httpx.Timeout(connect=30, read=180, write=30, pool=30)
+    last_exc: Exception | None = None
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for attempt in range(_REPORT_MAX_RETRIES):
+            try:
+                log.info(
+                    "Calling Gemini %s for HTML report (%d parts, attempt %d/%d)...",
+                    model, len(parts), attempt + 1, _REPORT_MAX_RETRIES,
+                )
+                resp = await client.post(
+                    url,
+                    headers={"x-goog-api-key": settings.gemini_api_key},
+                    json=payload,
+                )
+                if resp.status_code in _REPORT_RETRYABLE_STATUS:
+                    wait = _REPORT_RETRY_BACKOFF[min(attempt, len(_REPORT_RETRY_BACKOFF) - 1)]
+                    log.warning(
+                        "Gemini report %s returned %s, retrying in %ds (attempt %d/%d)",
+                        model, resp.status_code, wait, attempt + 1, _REPORT_MAX_RETRIES,
+                    )
+                    last_exc = httpx.HTTPStatusError(
+                        f"{resp.status_code}", request=resp.request, response=resp,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                if resp.status_code != 200:
+                    log.error("Gemini API error %d: %s", resp.status_code, resp.text[:1000])
+                resp.raise_for_status()
+                data = resp.json()
+                log.info("Gemini %s report response received, candidates=%d", model, len(data.get("candidates", [])))
+                return _extract_html_from_response(data)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code in _REPORT_RETRYABLE_STATUS:
+                    last_exc = exc
+                    wait = _REPORT_RETRY_BACKOFF[min(attempt, len(_REPORT_RETRY_BACKOFF) - 1)]
+                    log.warning(
+                        "Gemini report %s HTTP %s, retrying in %ds (attempt %d/%d)",
+                        model, exc.response.status_code, wait, attempt + 1, _REPORT_MAX_RETRIES,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                raise
+
+    if last_exc:
+        raise last_exc
+    raise RuntimeError(f"Gemini report ({model}): all retries exhausted")
+
+
+async def _call_gemini_report(
+    prompt_text: str,
+    images: list[dict[str, str]],
+) -> tuple[str, str]:
+    """Call Gemini for HTML report with fallback from 3.1 Pro to 3 Flash.
+
+    Returns ``(html_content, model_used)``."""
+    # Primary: Gemini 3.1 Pro Preview
+    try:
+        html = await _call_gemini_report_single(
+            GEMINI_REPORT_MODEL, prompt_text, images, thinking_level="medium",
+        )
+        return html, GEMINI_REPORT_MODEL
+    except Exception as primary_exc:
+        log.warning(
+            "Primary report model %s failed (%s), falling back to %s",
+            GEMINI_REPORT_MODEL, primary_exc, GEMINI_FALLBACK_MODEL,
+        )
+
+    # Fallback: Gemini 3 Flash Preview with high reasoning
+    html = await _call_gemini_report_single(
+        GEMINI_FALLBACK_MODEL, prompt_text, images, thinking_level="high",
+    )
+    return html, GEMINI_FALLBACK_MODEL
 
 
 async def export_html_report_from_body(body: dict[str, Any]) -> dict[str, Any]:
@@ -886,8 +954,9 @@ async def export_html_report_from_body(body: dict[str, Any]) -> dict[str, Any]:
     # 3. Build prompt
     prompt = _build_html_report_prompt(analysis_content, images, report_theme, title)
 
-    # 4. Call Gemini to generate HTML
-    html_content = await _call_gemini_report(prompt, images)
+    # 4. Call Gemini to generate HTML (with fallback)
+    html_content, model_used = await _call_gemini_report(prompt, images)
+    fallback = model_used != GEMINI_REPORT_MODEL
 
     # 5. Post-process: inject actual base64 data URIs into image placeholders
     html_content = _inject_base64_images(html_content, images)
@@ -912,4 +981,6 @@ async def export_html_report_from_body(body: dict[str, Any]) -> dict[str, Any]:
         "html_file": html_path.name,
         "view_url": view_url,
         "rel_path": rel_path,
+        "model_used": model_used,
+        "fallback": fallback,
     }
