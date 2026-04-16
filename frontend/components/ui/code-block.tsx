@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils"
 import React, { useEffect, useRef, useState } from "react"
-import { codeToHtml } from "shiki"
 
 export type CodeBlockProps = {
   children?: React.ReactNode
@@ -53,7 +52,9 @@ const CodeBlockCode = React.memo(function CodeBlockCode({
     }
 
     let cancelled = false
-    codeToHtml(code, { lang: language, theme }).then((html) => {
+    import("shiki").then(({ codeToHtml }) =>
+      codeToHtml(code, { lang: language, theme })
+    ).then((html) => {
       if (cancelled) return
       el.innerHTML = html.replace(/ tabindex="0"/g, "")
       setReady(true)

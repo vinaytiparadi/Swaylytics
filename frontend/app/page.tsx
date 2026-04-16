@@ -36,6 +36,9 @@ export default function Home() {
 
     const storedBg = localStorage.getItem("dynamicBgEnabled");
     if (storedBg === "true") setDynamicBgEnabled(true);
+
+    // Pre-download the analyze page chunk so navigation is near-instant
+    router.prefetch("/analyze");
   }, []);
 
   useEffect(() => {
