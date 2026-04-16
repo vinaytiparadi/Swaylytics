@@ -33,11 +33,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TextShimmer } from "@/components/ui/text-shimmer";
 import { CodeBlockCode } from "@/components/ui/code-block";
-import dynamic from "next/dynamic";
-const Markdown = dynamic(
-  () => import("@/components/ui/markdown").then((m) => ({ default: m.Markdown })),
-  { ssr: false, loading: () => <div className="animate-pulse h-4 bg-muted/30 rounded" /> }
-);
+import { Markdown } from "@/components/ui/markdown";
 import {
   PromptInput,
   PromptInputAction,
